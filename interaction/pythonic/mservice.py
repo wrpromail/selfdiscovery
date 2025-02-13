@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta
 import random
-from typing import Optional
+from typing import Optional, List
 import time
+from langchain.schema import HumanMessage, SystemMessage
+from model import chat, suggest
+from test_mservice import extract_python_code, validate_generated_code, execute_code
 
 functions_schema = """
 def search_phone_number_balance(phone_number: str) -> str:
@@ -16,7 +19,7 @@ def search_phone_number_balance(phone_number: str) -> str:
     \"\"\"
     pass
 
-def query_value_added_services(phone_number: str) -> str:
+def query_value_added_services(phone_number: str) -> List[str]:
     \"\"\"
     查询用户开通的增值服务列表
     
@@ -103,6 +106,45 @@ def check_service_availability(phone_number: str, service_type: str) -> str:
     \"\"\"
     pass
 
+def query_value_added_service_usage(phone_number: str, service_name: str) -> str:
+    \"\"\"
+    查询特定增值服务的使用情况
+    
+    Args:
+        phone_number: 手机号码
+        service_name: 增值服务名称
+        
+    Returns:
+        服务使用情况描述
+    \"\"\"
+    pass
+
+def query_data_sharing_members(phone_number: str) -> List[dict]:
+    \"\"\"
+    查询流量共享成员列表及使用情况
+    
+    Args:
+        phone_number: 主号码
+        
+    Returns:
+        成员使用情况列表
+    \"\"\"
+    pass
+
+def manage_family_numbers(phone_number: str, action: str = "query", target_number: str = None) -> str:
+    \"\"\"
+    管理亲情号码
+    
+    Args:
+        phone_number: 主号码
+        action: 操作类型 (query/add/remove)
+        target_number: 目标亲情号码
+        
+    Returns:
+        操作结果描述
+    \"\"\"
+    pass
+
 """
 
 functions_name_list = [
@@ -113,7 +155,10 @@ functions_name_list = [
     'get_package_recommendations',
     'check_network_status',
     'query_last_calls',
-    'check_service_availability'
+    'check_service_availability',
+    'query_value_added_service_usage',
+    'query_data_sharing_members',
+    'manage_family_numbers'
 ]
 
 test_queries = [
@@ -167,7 +212,10 @@ def load_functions():
         'get_package_recommendations': get_package_recommendations,
         'check_network_status': check_network_status,
         'query_last_calls': query_last_calls,
-        'check_service_availability': check_service_availability
+        'check_service_availability': check_service_availability,
+        'query_value_added_service_usage': query_value_added_service_usage,
+        'query_data_sharing_members': query_data_sharing_members,
+        'manage_family_numbers': manage_family_numbers
     }
 
 
@@ -179,20 +227,18 @@ def search_phone_number_balance(phone_number: str) -> str:
     return f"[执行函数：search_phone_number_balance]手机号{phone_number}的账户余额查询结果：\n余额：{balance}元\n账户状态：{status}\n"
 
 
-def query_value_added_services(phone_number: str) -> str:
-    """查询用户开通的增值服务列表"""
-    time.sleep(random.uniform(0.75, 1.25))
-    services = []
-    for service_type in PACKAGE_TYPES.values():
-        if random.choice([True, False]):
-            services.append(f"{service_type}{random.randint(1, 3)}")
+def query_value_added_services(phone_number: str) -> List[str]:
+    """
+    查询用户开通的增值服务列表
     
-    result = f"[执行函数：query_value_added_services]\n手机号{phone_number}的增值服务查询结果：\n"
-    if services:
-        result += "已开通的服务：\n" + "\n".join(f"- {service}" for service in services)
-    else:
-        result += "当前未开通任何增值服务"
-    return result
+    Args:
+        phone_number: 手机号码
+        
+    Returns:
+        已开通的增值服务名称列表
+    """
+    services = ["5G畅游包", "流量共享", "亲情号码", "来电提醒"]
+    return random.sample(services, random.randint(1, len(services)))
 
 
 def query_basic_package_usage(phone_number: str) -> str:
@@ -314,3 +360,216 @@ def check_service_availability(phone_number: str, service_type: str) -> str:
         result += "该服务当前不可用"
 
     return result
+
+
+def query_value_added_service_usage(phone_number: str, service_name: str) -> str:
+    """
+    查询特定增值服务的使用情况
+    
+    Args:
+        phone_number: 手机号码
+        service_name: 增值服务名称
+        
+    Returns:
+        服务使用情况描述
+    """
+    usage_templates = {
+        "5G畅游包": "本月已使用{usage}GB，剩余{remaining}GB",
+        "流量共享": "已分享{usage}GB给{num}个成员",
+        "亲情号码": "已拨打亲情号码{duration}分钟，优惠{amount}元",
+        "来电提醒": "本月已转发{count}次提醒"
+    }
+    
+    if service_name not in usage_templates:
+        return f"未找到{service_name}的使用记录"
+        
+    template = usage_templates[service_name]
+    if service_name == "5G畅游包":
+        return template.format(usage=random.randint(10, 50), remaining=random.randint(0, 20))
+    elif service_name == "流量共享":
+        return template.format(usage=random.randint(1, 10), num=random.randint(1, 3))
+    elif service_name == "亲情号码":
+        return template.format(duration=random.randint(60, 300), amount=random.randint(10, 50))
+    else:
+        return template.format(count=random.randint(5, 20))
+
+
+def query_data_sharing_members(phone_number: str) -> List[dict]:
+    """
+    查询流量共享成员列表及使用情况
+    
+    Args:
+        phone_number: 主号码
+        
+    Returns:
+        成员使用情况列表
+    """
+    members = []
+    for i in range(random.randint(1, 3)):
+        member = {
+            "phone": f"135{random.randint(10000000, 99999999)}",
+            "used_data": random.randint(1, 10),
+            "remaining_data": random.randint(0, 5)
+        }
+        members.append(member)
+    return members
+
+
+def manage_family_numbers(phone_number: str, action: str = "query", target_number: str = None) -> str:
+    """
+    管理亲情号码
+    
+    Args:
+        phone_number: 主号码
+        action: 操作类型 (query/add/remove)
+        target_number: 目标亲情号码
+        
+    Returns:
+        操作结果描述
+    """
+    family_numbers = [f"134{random.randint(10000000, 99999999)}" for _ in range(random.randint(1, 3))]
+    
+    if action == "query":
+        return f"当前亲情号码列表：{', '.join(family_numbers)}"
+    elif action == "add":
+        return f"已添加亲情号码：{target_number}"
+    elif action == "remove":
+        return f"已移除亲情号码：{target_number}"
+    else:
+        return "不支持的操作类型"
+
+
+def handle_query(query: str) -> tuple[float, str, list[str]]:
+    """
+    处理单个查询请求，返回执行时间、响应文本和执行的函数列表
+    
+    Args:
+        query: 用户查询文本
+        
+    Returns:
+        tuple: (执行时间（毫秒）, 响应文本, 执行的函数列表)
+    """
+    # 使用预定义的提示词模板
+    prompt_template = """你是一个移动通信服务的智能助手。你的任务是理解用户需求，并生成相应的Python代码来完成服务查询流程。
+
+可用的函数定义如下：
+{functions_schema}
+
+用户查询：{user_query}
+
+请生成Python代码来处理这个查询。要求：
+1. 代码应该调用上述预定义的函数来完成查询
+2. 将所有查询结果拼接成一个字符串并返回
+3. 使用 markdown 格式输出代码，例如：
+```python
+# 处理用户查询
+result = []  # 存储所有查询结果
+
+# 调用相关函数并收集结果
+result.append(...)
+result.append(...)
+
+# 返回拼接后的结果
+return "\\n".join(result)
+```"""
+    
+    # 构造完整提示词
+    prompt = prompt_template.format(
+        functions_schema=functions_schema,
+        user_query=query
+    )
+
+    # 构建消息
+    messages = [
+        SystemMessage(content="你是一个移动通信服务的智能助手"),
+        HumanMessage(content=prompt)
+    ]
+    
+    start_time = time.time()
+    
+    try:
+        # 获取模型响应
+        response = chat.invoke(messages)  # 使用 invoke 而不是直接调用
+        
+        # 提取代码
+        code = extract_python_code(response.content)
+        if not code:
+            raise Exception("未找到可执行代码")
+            
+        # 验证代码
+        valid, message = validate_generated_code(code, functions_name_list)
+        if not valid:
+            raise Exception(f"代码验证失败: {message}")
+            
+        # 执行代码
+        mock_functions = load_functions()
+        local_vars = execute_code(code, mock_functions.copy())
+        
+        # 获取执行结果
+        response_text = local_vars.get('_return_value', '执行完成，但没有返回值')
+        
+        # 提取执行的函数列表
+        executed_functions = []
+        for func in functions_name_list:
+            if func in code:
+                executed_functions.append(func)
+        
+        # 计算总执行时间（毫秒）
+        execution_time = (time.time() - start_time) * 1000
+        
+        return execution_time, str(response_text), executed_functions
+        
+    except Exception as e:
+        # 计算执行时间（即使发生错误）
+        execution_time = (time.time() - start_time) * 1000
+        error_message = f"处理查询时出错: {str(e)}"
+        return execution_time, error_message, []
+
+
+def generate_suggestions(user_query: str, query_response: str) -> str:
+    """
+    根据用户查询和查询结果生成智能建议
+    
+    Args:
+        user_query: 用户的原始查询文本
+        query_response: 查询的响应结果
+        
+    Returns:
+        str: 生成的建议内容
+    """
+    _system_message = """你是一个移动通信服务的智能助手, 接下来会传递针对用户的查询的响应内容。
+    你需要根据查询结果，生成一句话建议。诸如：
+    1. 如果用户欠费则建议用户尽快进行充值，并提供一些充值渠道建议。
+    2. 如果用户的某增值服务用量小于三分之一，则建议用户升级该增值服务。
+    3. 如果用户购买了多项增值服务，可以建议用户评估下是否需要调整套餐。
+    """
+    messages = [
+        SystemMessage(content=_system_message),
+        HumanMessage(content=f"用户查询内容:\n{user_query}\n查询结果:\n{query_response}")
+    ]
+    response = suggest.invoke(messages)
+    return response.content
+
+
+if __name__ == "__main__":
+    # 测试两个查询
+    test_queries = [
+        "查询13800138000的话费余额",
+        "查看13900139000的套餐使用情况和增值服务"
+    ]
+    
+    for query in test_queries:
+        print(f"\n处理查询: {query}")
+        print("-" * 50)
+        
+        # 执行查询
+        execution_time, response, executed_functions = handle_query(query)
+        
+        print(f"执行时间: {execution_time:.2f}毫秒")
+        print(f"使用的函数: {', '.join(executed_functions)}")
+        print(f"响应内容:\n{response}")
+        
+        # 生成建议
+        suggestion = generate_suggestions(query, response)
+        print(f"\n智能建议:\n{suggestion}")
+        print("-" * 50)

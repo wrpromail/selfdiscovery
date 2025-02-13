@@ -8,6 +8,7 @@ from model import chat
 from threading import Thread, Lock
 from queue import Queue
 
+
 def load_test_data(test_cases: List[str], functions_schema: str, prompt_template: str) -> Dict[str, Any]:
     """
     加载测试数据和配置
@@ -37,17 +38,19 @@ def load_test_data(test_cases: List[str], functions_schema: str, prompt_template
                 'per_case_time': []
             },
             'function_stats': {  # 新增：函数调用统计
-                'calls': {},      # 记录每个函数的调用次数
-                'avg_time': {}    # 记录每个函数的平均响应时间
+                'calls': {},  # 记录每个函数的调用次数
+                'avg_time': {}  # 记录每个函数的平均响应时间
             }
         }
     }
+
 
 def extract_python_code(text: str) -> Optional[str]:
     """从文本中提取markdown格式的Python代码"""
     pattern = r"```python\n(.*?)```"
     matches = re.findall(pattern, text, re.DOTALL)
     return matches[0] if matches else None
+
 
 def validate_generated_code(code: str, required_functions: List[str]) -> tuple[bool, str]:
     """
@@ -83,7 +86,7 @@ def validate_generated_code(code: str, required_functions: List[str]) -> tuple[b
 def _validate():
 {chr(10).join('    ' + line for line in code.split(chr(10)))}
 """
-    
+
     # 基本的语法检查
     try:
         compile(wrapped_code, '<string>', 'exec')
@@ -91,6 +94,7 @@ def _validate():
         return False, f"语法错误: {str(e)}"
 
     return True, f"代码验证通过，使用了以下函数: {', '.join(found_functions)}"
+
 
 def execute_code(code: str, global_context: dict) -> dict:
     """
@@ -125,7 +129,7 @@ def execute_code(code: str, global_context: dict) -> dict:
 
         # 记录函数调用开始时间
         start_time = time()
-        
+
         # 包装代码以捕获返回值
         wrapped_code = f"""
 def _execute():
@@ -133,7 +137,7 @@ def _execute():
 
 _return_value = _execute()
 """
-        
+
         # 执行代码
         print("开始执行生成的代码...")
         exec(wrapped_code, global_context, local_context)
@@ -148,6 +152,7 @@ _return_value = _execute()
         print(f"执行出错: {str(e)}")
         print(f"错误类型: {type(e).__name__}")
         raise
+
 
 def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_functions: List[str]) -> Dict[str, Any]:
     """
@@ -197,7 +202,7 @@ def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_fu
             code = extract_python_code(response.content)
             valid, message = validate_generated_code(code, required_functions)
             print(f"\n代码验证结果: {message}")
-            
+
             if not valid:
                 raise Exception(f"代码验证失败: {message}")
             if not code:
@@ -214,7 +219,7 @@ def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_fu
             print("\n执行结果:")
             print("-" * 30)
             local_vars = execute_code(code, mock_functions.copy())
-            
+
             # 获取代码执行的返回值
             if '_return_value' in local_vars:
                 print("返回结果:")
@@ -222,7 +227,7 @@ def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_fu
             else:
                 print("警告：代码没有返回任何结果")
             print("-" * 30)
-            
+
             # 打印本次查询的耗时
             query_time = time() - case_start_time
             print(f"\n本次查询耗时: {query_time:.2f}秒")
@@ -235,7 +240,7 @@ def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_fu
                     current_avg = stats['function_stats']['avg_time'][func]
                     calls = stats['function_stats']['calls'][func]
                     stats['function_stats']['avg_time'][func] = (
-                        (current_avg * (calls - 1) + local_vars.get('_execution_time', 1.0)) / calls
+                            (current_avg * (calls - 1) + local_vars.get('_execution_time', 1.0)) / calls
                     )
 
             stats['success'] += 1
@@ -260,6 +265,7 @@ def run_test(config: Dict[str, Any], mock_functions: Dict[str, Any], required_fu
     stats['timing']['average_time'] = stats['timing']['total_time'] / stats['total']
 
     return stats
+
 
 def print_test_results(stats: Dict[str, Any]) -> None:
     """
@@ -296,16 +302,17 @@ def print_test_results(stats: Dict[str, Any]) -> None:
 
     print("\n每个用例的耗时详情(Top 5):")
     for case, time_taken in sorted(stats['timing']['per_case_time'],
-                                 key=lambda x: x[1],
-                                 reverse=True)[:5]:
+                                   key=lambda x: x[1],
+                                   reverse=True)[:5]:
         print(f"- {time_taken:.2f}秒: {case}")
 
+
 def run_generic_test(
-    test_cases: List[str],
-    functions_schema: str,
-    prompt_template: str,
-    mock_functions: Dict[str, Any],
-    required_functions: List[str]
+        test_cases: List[str],
+        functions_schema: str,
+        prompt_template: str,
+        mock_functions: Dict[str, Any],
+        required_functions: List[str]
 ) -> Dict[str, Any]:
     """
     运行通用测试框架
@@ -322,14 +329,15 @@ def run_generic_test(
     """
     # 加载测试配置
     config = load_test_data(test_cases, functions_schema, prompt_template)
-    
+
     # 运行测试
     stats = run_test(config, mock_functions, required_functions)
-    
+
     # 打印测试结果
     print_test_results(stats)
-    
+
     return stats
+
 
 if __name__ == "__main__":
     # 从 mservice 导入所需内容
@@ -339,13 +347,13 @@ if __name__ == "__main__":
         test_queries,
         load_functions
     )
-    
+
     # 加载 mock 函数
     mock_functions = load_functions()
-    
+
     # 使用预定义的函数列表
     required_functions = functions_name_list
-    
+
     # 定义提示词模板
     PROMPT_TEMPLATE = """你是一个移动通信服务的智能助手。你的任务是理解用户需求，并生成相应的Python代码来完成服务查询流程。
 
@@ -403,7 +411,7 @@ def process_query():
 return process_query()
 ```
 """
-    
+
     # 运行测试
     stats = run_generic_test(
         test_cases=test_queries,

@@ -1,0 +1,41 @@
+FROM registry.cn-beijing.aliyuncs.com/wrrepo/python:3.12.8-slim as builder
+
+WORKDIR /app
+COPY requirements.txt .
+
+# 创建非root用户
+RUN useradd -m -u 1000 appuser && \
+    sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends gcc python3-dev vim && \
+    python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python -m pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python -m pip install langchain-huggingface==0.1.2 -i https://pypi.tuna.tsinghua.edu.cn/simple --no-deps && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM registry.cn-beijing.aliyuncs.com/wrrepo/python:3.12.8-slim
+
+WORKDIR /app
+
+# 修正Python版本路径
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+
+RUN useradd -m -u 1000 appuser && \
+    sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl telnet poppler-utils vim && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY . /app
+
+# 设置目录权限
+RUN chown -R appuser:appuser /app
+
+# 切换到非root用户
+USER appuser
+
+EXPOSE 5560
+
+CMD ["python", "app.py"]
