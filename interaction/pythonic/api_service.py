@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from mservice import handle_query, generate_suggestions
@@ -7,6 +8,14 @@ app = FastAPI(
     title="Pythonic Service API",
     description="提供自然语言查询到Python代码的转换和执行服务",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许的前端地址，可以改为 "*" 以允许所有来源
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许的 HTTP 方法
+    allow_headers=["*"]   # 允许的 HTTP 请求头
 )
 
 

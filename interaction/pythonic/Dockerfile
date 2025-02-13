@@ -1,5 +1,5 @@
 # 使用阿里云镜像并采用多阶段构建
-FROM registry.cn-beijing.aliyuncs.com/wrrepo/python:3.12.8-slim as builder
+FROM registry.cn-beijing.aliyuncs.com/wrrepo/python:3.12.8-slim AS builder
 
 # 设置工作目录
 WORKDIR /app
